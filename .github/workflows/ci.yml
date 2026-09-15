@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      # go.mod replaces go.mau.fi/whatsmeow with ./whatsmeow-lib, so the
+      # submodule must be present or the build cannot resolve the module.
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # go.mod is the single source of truth for the toolchain version.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - run: go build ./...
+      # go build never compiles _test.go files; vet does. This is the real gate.
+      - run: go vet ./...
+      - run: go test ./...
